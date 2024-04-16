@@ -34,15 +34,15 @@ VERSION?=$(shell if [ -d .git ]; then echo `git describe --tags --dirty`; else e
 TAG?=$(VERSION)
 
 # REGISTRY is the container registry to push into.
-REGISTRY?=gcr.io/k8s-staging-npd
+REGISTRY?=773267254890.dkr.ecr.us-east-1.amazonaws.com
 
 # UPLOAD_PATH is the cloud storage path to upload release tar.
-UPLOAD_PATH?=gs://kubernetes-release
+#UPLOAD_PATH?=gs://kubernetes-release
 # Trim the trailing '/' in the path
 UPLOAD_PATH:=$(shell echo $(UPLOAD_PATH) | sed '$$s/\/*$$//')
 
 # PKG is the package name of node problem detector repo.
-PKG:=k8s.io/node-problem-detector
+PKG:=773267254890.dkr.ecr.us-east-1.amazonaws.com/observability/npd
 
 # PKG_SOURCES are all the go source code.
 ifeq ($(OS),Windows_NT)
@@ -60,7 +60,7 @@ NPD_NAME_VERSION?=node-problem-detector-$(VERSION)
 TARBALL=$(NPD_NAME_VERSION).tar.gz
 
 # IMAGE is the image name of the node problem detector container image.
-IMAGE:=$(REGISTRY)/node-problem-detector:$(TAG)
+IMAGE:=$(REGISTRY)/observability/npd:$(TAG)
 
 # ENABLE_JOURNALD enables build journald support or not. Building journald
 # support needs libsystemd-dev or libsystemd-journal-dev.
@@ -73,7 +73,8 @@ ENABLE_JOURNALD=0
 endif
 
 # Set default base image to Debian 12 (Bookworm)
-BASEIMAGE:=registry.k8s.io/build-image/debian-base:bookworm-v1.0.2
+#BASEIMAGE:=registry.k8s.io/build-image/debian-base:bookworm-v1.0.2
+BASEIMAGE:=alpine:3.19.1
 
 # Disable cgo by default to make the binary statically linked.
 CGO_ENABLED:=0
@@ -259,10 +260,8 @@ build-in-docker: clean docker-builder
 
 push-container: build-container
 	# So we can push to docker hub by setting REGISTRY
-ifneq (,$(findstring gcr.io,$(REGISTRY)))
-	gcloud auth configure-docker
-endif
 	# Build should be cached from build-container
+	aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 773267254890.dkr.ecr.us-east-1.amazonaws.com
 	docker buildx build --push --platform $(DOCKER_PLATFORMS) -t $(IMAGE) --build-arg BASEIMAGE=$(BASEIMAGE) --build-arg LOGCOUNTER=$(LOGCOUNTER) .
 
 push-tar: build-tar

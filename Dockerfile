@@ -20,8 +20,9 @@ ARG BASEIMAGE
 # Must override builder-base, not builder, since the latter is referred to later in the file and so must not be
 # directly replaced. See here, and note that "stage" parameter mentioned there has been renamed to 
 # "build-context": https://github.com/docker/buildx/pull/904#issuecomment-1005871838
-FROM golang:1.22.2-bookworm as builder-base
-FROM builder-base as builder
+
+
+FROM golang:1.22.2-bookworm as builder
 LABEL maintainer="Andy Xie <andy.xning@gmail.com>"
 
 ARG TARGETARCH
@@ -37,19 +38,21 @@ WORKDIR /gopath/src/k8s.io/node-problem-detector
 RUN GOARCH=${TARGETARCH} make bin/node-problem-detector bin/health-checker bin/log-counter
 
 ARG BASEIMAGE
+
 FROM --platform=${TARGETPLATFORM} ${BASEIMAGE}
 
-LABEL maintainer="Random Liu <lantaol@google.com>"
+LABEL maintainer="Vasilchenko Anton <anton.vasilchenko@workato.com>"
 
-RUN clean-install util-linux bash libsystemd-dev
+RUN apk add --no-cache util-linux bash elogind-dev
 
 # Avoid symlink of /etc/localtime.
 RUN test -h /etc/localtime && rm -f /etc/localtime && cp /usr/share/zoneinfo/UTC /etc/localtime || true
 
-COPY --from=builder /gopath/src/k8s.io/node-problem-detector/bin/node-problem-detector /node-problem-detector
+COPY --from=builder /gopath/src/k8s.io/node-problem-detector/bin/node-problem-detector /
 
 ARG LOGCOUNTER
-COPY --from=builder /gopath/src/k8s.io/node-problem-detector/bin/health-checker /gopath/src/k8s.io/node-problem-detector/${LOGCOUNTER} /home/kubernetes/bin/
+COPY --from=builder /gopath/src/k8s.io/node-problem-detector/bin/health-checker /gopath/src/k8s.io/node-problem-detector/${LOGCOUNTER} /
 
 COPY --from=builder /gopath/src/k8s.io/node-problem-detector/config/ /config
+
 ENTRYPOINT ["/node-problem-detector", "--config.system-log-monitor=/config/kernel-monitor.json"]
