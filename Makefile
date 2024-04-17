@@ -34,7 +34,8 @@ VERSION?=$(shell if [ -d .git ]; then echo `git describe --tags --dirty`; else e
 TAG?=$(VERSION)
 
 # REGISTRY is the container registry to push into.
-REGISTRY?=773267254890.dkr.ecr.us-east-1.amazonaws.com
+#REGISTRY?=773267254890.dkr.ecr.us-east-1.amazonaws.com
+REGISTRY?=thunderbird
 
 # UPLOAD_PATH is the cloud storage path to upload release tar.
 #UPLOAD_PATH?=gs://kubernetes-release
@@ -42,7 +43,7 @@ REGISTRY?=773267254890.dkr.ecr.us-east-1.amazonaws.com
 UPLOAD_PATH:=$(shell echo $(UPLOAD_PATH) | sed '$$s/\/*$$//')
 
 # PKG is the package name of node problem detector repo.
-PKG:=773267254890.dkr.ecr.us-east-1.amazonaws.com/observability/npd
+PKG:=thunderbird/npd
 
 # PKG_SOURCES are all the go source code.
 ifeq ($(OS),Windows_NT)
@@ -60,14 +61,14 @@ NPD_NAME_VERSION?=node-problem-detector-$(VERSION)
 TARBALL=$(NPD_NAME_VERSION).tar.gz
 
 # IMAGE is the image name of the node problem detector container image.
-IMAGE:=$(REGISTRY)/observability/npd:$(TAG)
+IMAGE:=$(REGISTRY)/npd:$(TAG)
 
 # ENABLE_JOURNALD enables build journald support or not. Building journald
 # support needs libsystemd-dev or libsystemd-journal-dev.
 ENABLE_JOURNALD?=1
 
 ifeq ($(shell go env GOHOSTOS), darwin)
-ENABLE_JOURNALD=0
+ENABLE_JOURNALD=1
 else ifeq ($(shell go env GOHOSTOS), windows)
 ENABLE_JOURNALD=0
 endif

@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-ARG BASEIMAGE
 
 # "builder-base" can be overriden using dockerb buildx's --build-context flag,
 # by users who want to use a different images for the builder. E.g. if you need to use an older OS 
@@ -21,11 +20,7 @@ ARG BASEIMAGE
 # directly replaced. See here, and note that "stage" parameter mentioned there has been renamed to 
 # "build-context": https://github.com/docker/buildx/pull/904#issuecomment-1005871838
 
-
-FROM golang:1.22.2-bookworm as builder
-LABEL maintainer="Andy Xie <andy.xning@gmail.com>"
-
-ARG TARGETARCH
+FROM --platform=linux/amd64 golang:1.22.2-bookworm as builder
 
 ENV GOPATH /gopath/
 ENV PATH $GOPATH/bin:$PATH
@@ -33,13 +28,29 @@ ENV PATH $GOPATH/bin:$PATH
 RUN apt-get update --fix-missing && apt-get --yes install libsystemd-dev gcc-aarch64-linux-gnu
 RUN go version
 
-COPY . /gopath/src/k8s.io/node-problem-detector/
-WORKDIR /gopath/src/k8s.io/node-problem-detector
-RUN GOARCH=${TARGETARCH} make bin/node-problem-detector bin/health-checker bin/log-counter
+COPY . /app
+WORKDIR /app
 
-ARG BASEIMAGE
+RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build \
+    		-o bin/node-problem-detector \
+    		-ldflags '-X $(PKG)/pkg/version.version=v0.8.18' \
+    		-tags "journald" \
+    		./cmd/nodeproblemdetector
 
-FROM --platform=${TARGETPLATFORM} ${BASEIMAGE}
+RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build \
+    		-o bin/health-checker \
+    		-ldflags '-X $(PKG)/pkg/version.version=v0.8.18' \
+    		-tags "journald" \
+    		cmd/healthchecker/health_checker.go
+
+RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build \
+    		-o bin/log-counter \
+    		-ldflags '-X $(PKG)/pkg/version.version=v0.8.18' \
+    		-tags "journald" \
+    		cmd/logcounter/log_counter.go
+
+
+FROM --platform=linux/amd64 alpine:3.19.1
 
 LABEL maintainer="Vasilchenko Anton <anton.vasilchenko@workato.com>"
 
@@ -48,10 +59,7 @@ RUN apk add --no-cache util-linux bash elogind-dev
 # Avoid symlink of /etc/localtime.
 RUN test -h /etc/localtime && rm -f /etc/localtime && cp /usr/share/zoneinfo/UTC /etc/localtime || true
 
-COPY --from=builder /gopath/src/k8s.io/node-problem-detector/bin/node-problem-detector /usr/local/bin/
-
-ARG LOGCOUNTER
-COPY --from=builder /gopath/src/k8s.io/node-problem-detector/bin/health-checker /gopath/src/k8s.io/node-problem-detector/${LOGCOUNTER} /usr/local/bin/
-COPY --from=builder /gopath/src/k8s.io/node-problem-detector/config/ /config
+COPY --from=builder /app/bin/ /usr/local/bin/
+COPY --from=builder /app/config/ /config
 
 ENTRYPOINT ["node-problem-detector", "--config.system-log-monitor=/config/kernel-monitor.json"]
