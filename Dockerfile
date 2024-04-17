@@ -48,11 +48,10 @@ RUN apk add --no-cache util-linux bash elogind-dev
 # Avoid symlink of /etc/localtime.
 RUN test -h /etc/localtime && rm -f /etc/localtime && cp /usr/share/zoneinfo/UTC /etc/localtime || true
 
-COPY --from=builder /gopath/src/k8s.io/node-problem-detector/bin/node-problem-detector /
+COPY --from=builder /gopath/src/k8s.io/node-problem-detector/bin/node-problem-detector /usr/local/bin/
 
 ARG LOGCOUNTER
-COPY --from=builder /gopath/src/k8s.io/node-problem-detector/bin/health-checker /gopath/src/k8s.io/node-problem-detector/${LOGCOUNTER} /
-
+COPY --from=builder /gopath/src/k8s.io/node-problem-detector/bin/health-checker /gopath/src/k8s.io/node-problem-detector/${LOGCOUNTER} /usr/local/bin/
 COPY --from=builder /gopath/src/k8s.io/node-problem-detector/config/ /config
 
-ENTRYPOINT ["/node-problem-detector", "--config.system-log-monitor=/config/kernel-monitor.json"]
+ENTRYPOINT ["node-problem-detector", "--config.system-log-monitor=/config/kernel-monitor.json"]

@@ -1,0 +1,8 @@
+alpine-baselayout
+alpine-keys
+apk-tools
+bash
+busybox
+elogind-dev
+libc-utils
+util-linux
